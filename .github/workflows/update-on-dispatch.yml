@@ -1,0 +1,40 @@
+name: Update on dispatch
+
+on:
+  repository_dispatch:
+    types: [electron-updated]
+
+jobs:
+  build:
+    runs-on: archlinux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if triggered by electron-updated and bump pkgrel if needed
+        id: ver
+        if: github.event_name == 'repository_dispatch' && github.event.action == 'electron-updated'
+        run: |
+          old_pkgver=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          old_pkgrel=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
+          # Update sources
+          makepkg --nobuild --nodeps --skipinteg
+          new_pkgver=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
+          if [[ "$old_pkgver" == "$new_pkgver" ]]; then
+            new_pkgrel=$((old_pkgrel + 1))
+            sed -i "s/^pkgrel=.*/pkgrel=$new_pkgrel/" PKGBUILD
+            echo "pkgrel bumped to $new_pkgrel"
+          else
+            new_pkgrel="1"
+            echo "pkgver changed ($old_pkgver -> $new_pkgver)."
+          fi
+          echo "version=$new_pkgver-$new_pkgrel" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Push changes
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "upgpkg: ${{ steps.ver.outputs.version }}"
+          git push
