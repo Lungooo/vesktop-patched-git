@@ -19,6 +19,7 @@ jobs:
           old_pkgrel=$(grep '^pkgrel=' PKGBUILD | cut -d'=' -f2)
           # Update sources
           makepkg --nobuild --nodeps --skipinteg
+          makepkg --printsrcinfo > .SRCINFO
           new_pkgver=$(grep '^pkgver=' PKGBUILD | cut -d'=' -f2)
           if [[ "$old_pkgver" == "$new_pkgver" ]]; then
             new_pkgrel=$((old_pkgrel + 1))
